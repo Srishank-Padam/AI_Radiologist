@@ -1,76 +1,132 @@
 import { generateMedicalCanvasImages, VERIFIED_MODELS } from '../utils/mockData';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 /**
  * Health check endpoint for FastAPI backend
  */
-export async function checkBackendHealth() {
+export async function checkBackendHealth(signal = null) {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch(`${BASE_URL}/health`, { signal: controller.signal });
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const effectiveSignal = signal || controller.signal;
+
+    const res = await fetch(`${BASE_URL}/health`, { signal: effectiveSignal });
     clearTimeout(timeoutId);
-    if (!res.ok) return { online: false, error: `Status ${res.status}` };
+    if (!res.ok) return { online: false, error: `Backend responded with HTTP ${res.status}` };
     const data = await res.json();
     return { online: true, ...data };
   } catch (err) {
-    return { online: false, error: err.message };
+    return { online: false, error: err.name === 'AbortError' ? 'Health check timed out' : err.message };
   }
 }
 
 /**
- * Retrieve verified models list from backend (or fallback to repository verified specs)
+ * Retrieve verified models list from backend (or fallback to verified specs)
  */
-export async function getModels() {
+export async function getModels(signal = null) {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch(`${BASE_URL}/models`, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    if (res.ok) return await res.json();
+    const res = await fetch(`${BASE_URL}/models`, { signal });
+    if (res.ok) {
+      return await res.json();
+    }
   } catch (e) {
-    // Fall back to verified repo data
+    console.warn('Could not fetch remote model specs, using verified registry:', e.message);
   }
   return VERIFIED_MODELS;
 }
 
 /**
- * Run prediction on a medical scan image
- * @param {string} modality - 'xray' | 'ct' | 'mri'
- * @param {File|Blob|string} file - The uploaded image file or preset id
- * @param {object} options - Options including subtype override for testing
+ * Helper to convert a data URL or base64 string to a standard File/Blob
  */
-export async function predictScan(modality, file, options = {}) {
-  // If backend is configured and reachable, attempt live multipart POST
-  const isRealBackendEnabled = import.meta.env.VITE_USE_REAL_BACKEND === 'true';
-
-  if (isRealBackendEnabled && file instanceof File) {
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch(`${BASE_URL}/predict/${modality}`, {
-        method: 'POST',
-        body: formData,
-      });
-      if (res.ok) {
-        return await res.json();
-      }
-      console.warn(`Backend returned ${res.status}, falling back to mock engine`);
-    } catch (err) {
-      console.warn('Real backend call failed, falling back to mock engine:', err.message);
-    }
-  }
-
-  // Realistic mock inference generator with actual canvas rendering
-  return generateMockPrediction(modality, file, options);
+async function dataUrlToFile(dataUrl, filename = 'scan.png') {
+  const res = await fetch(dataUrl);
+  const blob = await res.blob();
+  return new File([blob], filename, { type: blob.type || 'image/png' });
 }
 
 /**
- * Generate fully verified, realistic mock inference results
+ * Run real deep learning model prediction on a medical scan
+ * @param {string} modality - 'xray' | 'ct' | 'mri'
+ * @param {File|Blob|string} fileOrDataUrl - The uploaded image file or data URL preview
+ * @param {object} options - Options including subtype override and AbortSignal
+ */
+export async function predictScan(modality, fileOrDataUrl, options = {}) {
+  const normalizedModality = modality.toLowerCase();
+  if (!['xray', 'ct', 'mri'].includes(normalizedModality)) {
+    throw new Error(`Unsupported modality '${modality}'. Must be 'xray', 'ct', or 'mri'.`);
+  }
+
+  let fileToSend;
+  if (fileOrDataUrl instanceof File) {
+    fileToSend = fileOrDataUrl;
+  } else if (fileOrDataUrl instanceof Blob) {
+    fileToSend = new File([fileOrDataUrl], 'scan.png', { type: fileOrDataUrl.type || 'image/png' });
+  } else if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('data:')) {
+    fileToSend = await dataUrlToFile(fileOrDataUrl, `${normalizedModality}_scan.png`);
+  } else {
+    // If a preset string identifier was passed without a data URL, generate canvas to send to backend
+    const subtype = options.subtype || 'default';
+    const canvasImages = generateMedicalCanvasImages(normalizedModality, subtype);
+    fileToSend = await dataUrlToFile(canvasImages.original, `${normalizedModality}_preset.png`);
+  }
+
+  const formData = new FormData();
+  formData.append('file', fileToSend);
+  if (options.subtype && options.subtype !== 'default') {
+    formData.append('subtype', options.subtype);
+  }
+
+  try {
+    const res = await fetch(`${BASE_URL}/predict/${normalizedModality}`, {
+      method: 'POST',
+      body: formData,
+      signal: options.signal,
+      // Note: We intentionally DO NOT set Content-Type header so the browser
+      // sets multipart/form-data with the correct boundary automatically.
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return data;
+    }
+
+    // Try parsing backend structured error message
+    let errorMessage = `Inference failed with status ${res.status}`;
+    try {
+      const errJson = await res.json();
+      if (errJson.error) {
+        errorMessage = errJson.error;
+      }
+    } catch (_) {
+      // Use fallback status text if body is not JSON
+    }
+
+    throw new Error(errorMessage);
+
+  } catch (err) {
+    // If request was aborted by user cancellation
+    if (err.name === 'AbortError') {
+      throw new Error('Analysis request was cancelled.');
+    }
+
+    // If explicit mock fallback is requested in environment for non-backend demo mode:
+    const allowMockFallback = import.meta.env.VITE_USE_MOCK_FALLBACK === 'true';
+    if (allowMockFallback) {
+      console.warn('Real backend call failed, falling back to mock generator (VITE_USE_MOCK_FALLBACK is true):', err.message);
+      return generateMockPrediction(normalizedModality, fileOrDataUrl, options);
+    }
+
+    // Otherwise, surface real network / backend error honestly per non-negotiable constraints
+    console.error(`Backend call to ${BASE_URL}/predict/${normalizedModality} failed:`, err);
+    throw new Error(`Failed to connect to MedVision AI backend at ${BASE_URL}: ${err.message}`);
+  }
+}
+
+/**
+ * Realistic mock inference generator with actual canvas rendering (used only when VITE_USE_MOCK_FALLBACK=true)
  */
 async function generateMockPrediction(modality, file, options = {}) {
-  // Simulate inference computation time (800ms)
   await new Promise((resolve) => setTimeout(resolve, 800));
 
   const subtype = options.subtype || (typeof file === 'string' && file.includes('mura') ? 'musculoskeletal' : 'default');
@@ -86,10 +142,7 @@ async function generateMockPrediction(modality, file, options = {}) {
         modality: 'xray',
         routed_to: 'musculoskeletal',
         prediction: 'ABNORMAL',
-        probabilities: {
-          NORMAL: 0.12,
-          ABNORMAL: 0.88,
-        },
+        probabilities: { NORMAL: 0.12, ABNORMAL: 0.88 },
         confidence: 0.88,
         threshold: model.threshold,
         model_name: model.name,
@@ -102,66 +155,13 @@ async function generateMockPrediction(modality, file, options = {}) {
         disclaimer: DISCLAIMER_TEXT,
         warnings: [],
       };
-    } else if (subtype === 'unknown') {
-      return {
-        modality: 'xray',
-        routed_to: 'unknown',
-        prediction: 'UNKNOWN',
-        probabilities: {
-          CHEST: 0.35,
-          MUSCULOSKELETAL: 0.38,
-          UNKNOWN: 0.27,
-        },
-        confidence: 0.38,
-        threshold: 0.75,
-        model_name: 'X-Ray Anatomical Router (ResNet-50)',
-        framework: 'PyTorch 2.2',
-        input_size: '224x224 px',
-        dataset: 'Multi-Anatomical Radiography Router',
-        metrics: {
-          'Router Accuracy': '96.2%',
-          'Entropy Threshold': '0.75',
-        },
-        gradcam_png_base64: canvasImages.gradcam,
-        original_png_base64: canvasImages.original,
-        disclaimer: DISCLAIMER_TEXT,
-        warnings: [
-          'UNABLE TO CONFIDENTLY ROUTE SCAN: Router confidence score (0.38) fell below safety threshold (0.75). Downstream specialist prediction withheld to prevent misclassification.',
-        ],
-      };
-    } else if (subtype === 'normal') {
-      const model = VERIFIED_MODELS.xray_chest;
-      return {
-        modality: 'xray',
-        routed_to: 'chest',
-        prediction: 'NORMAL',
-        probabilities: {
-          NORMAL: 0.94,
-          PNEUMONIA: 0.06,
-        },
-        confidence: 0.94,
-        threshold: model.threshold,
-        model_name: model.name,
-        framework: model.framework,
-        input_size: model.input_size,
-        dataset: model.dataset,
-        metrics: model.metrics,
-        gradcam_png_base64: canvasImages.gradcam,
-        original_png_base64: canvasImages.original,
-        disclaimer: DISCLAIMER_TEXT,
-        warnings: [],
-      };
     } else {
-      // Default: Chest Pneumonia
       const model = VERIFIED_MODELS.xray_chest;
       return {
         modality: 'xray',
         routed_to: 'chest',
         prediction: 'PNEUMONIA',
-        probabilities: {
-          NORMAL: 0.08,
-          PNEUMONIA: 0.92,
-        },
+        probabilities: { NORMAL: 0.08, PNEUMONIA: 0.92 },
         confidence: 0.92,
         threshold: model.threshold,
         model_name: model.name,
@@ -176,19 +176,14 @@ async function generateMockPrediction(modality, file, options = {}) {
       };
     }
   } else if (modality === 'ct') {
-    const isBrainBleed = subtype === 'brain_bleed' || (typeof file === 'string' && file.includes('bleed'));
-    const isNormal = subtype === 'normal' || (typeof file === 'string' && file.includes('normal'));
-
+    const isBrainBleed = subtype === 'brain_bleed';
     if (isBrainBleed) {
       const model = VERIFIED_MODELS.ct_brain_bleed;
       return {
         modality: 'ct',
         routed_to: 'ct_brain_bleed',
         prediction: 'BRAIN BLEED (HEMORRHAGE)',
-        probabilities: {
-          'NO BLEED': 0.04,
-          'BRAIN BLEED (HEMORRHAGE)': 0.96,
-        },
+        probabilities: { 'NO BLEED': 0.04, 'BRAIN BLEED (HEMORRHAGE)': 0.96 },
         confidence: 0.96,
         threshold: model.threshold,
         model_name: model.name,
@@ -199,20 +194,16 @@ async function generateMockPrediction(modality, file, options = {}) {
         gradcam_png_base64: canvasImages.gradcam,
         original_png_base64: canvasImages.original,
         disclaimer: DISCLAIMER_TEXT,
-        warnings: [
-          'CRITICAL FINDING: Acute intracranial hyperdensity detected consistent with parenchymal hemorrhage. Requires immediate neurosurgical and emergency radiology review.',
-        ],
+        warnings: ['CRITICAL FINDING: Acute intracranial hyperdensity detected.'],
       };
     } else {
       const model = VERIFIED_MODELS.ct;
       return {
         modality: 'ct',
         routed_to: 'ct_axial_slice',
-        prediction: isNormal ? 'NORMAL' : 'COVID-19',
-        probabilities: isNormal
-          ? { NORMAL: 0.93, PNEUMONIA: 0.04, 'COVID-19': 0.03 }
-          : { NORMAL: 0.04, PNEUMONIA: 0.14, 'COVID-19': 0.82 },
-        confidence: isNormal ? 0.93 : 0.82,
+        prediction: 'COVID-19',
+        probabilities: { NORMAL: 0.04, PNEUMONIA: 0.14, 'COVID-19': 0.82 },
+        confidence: 0.82,
         threshold: model.threshold,
         model_name: model.name,
         framework: model.framework,
@@ -226,21 +217,14 @@ async function generateMockPrediction(modality, file, options = {}) {
       };
     }
   } else if (modality === 'mri') {
-    const isDementia = subtype === 'dementia' || (typeof file === 'string' && file.includes('dementia'));
-    const isNoTumor = subtype === 'notumor' || (typeof file === 'string' && file.includes('notumor'));
-
+    const isDementia = subtype === 'dementia';
     if (isDementia) {
       const model = VERIFIED_MODELS.mri_dementia;
       return {
         modality: 'mri',
         routed_to: 'mri_dementia',
         prediction: 'MILD DEMENTIA',
-        probabilities: {
-          'NON-DEMENTED': 0.05,
-          'VERY MILD DEMENTIA': 0.16,
-          'MILD DEMENTIA': 0.74,
-          'MODERATE DEMENTIA': 0.05,
-        },
+        probabilities: { 'NON-DEMENTED': 0.05, 'VERY MILD DEMENTIA': 0.16, 'MILD DEMENTIA': 0.74, 'MODERATE DEMENTIA': 0.05 },
         confidence: 0.74,
         threshold: model.threshold,
         model_name: model.name,
@@ -251,20 +235,16 @@ async function generateMockPrediction(modality, file, options = {}) {
         gradcam_png_base64: canvasImages.gradcam,
         original_png_base64: canvasImages.original,
         disclaimer: DISCLAIMER_TEXT,
-        warnings: [
-          'NEURODEGENERATIVE FINDING: Structural pattern matches significant ventricular enlargement and temporal cortical volume loss consistent with mild dementia. Correlate with neuropsychological testing.',
-        ],
+        warnings: ['NEURODEGENERATIVE FINDING: Structural pattern matches significant ventricular enlargement.'],
       };
     } else {
       const model = VERIFIED_MODELS.mri;
       return {
         modality: 'mri',
         routed_to: 'brain_mri',
-        prediction: isNoTumor ? 'NO TUMOR' : 'TUMOR',
-        probabilities: isNoTumor
-          ? { 'NO TUMOR': 0.96, TUMOR: 0.04 }
-          : { 'NO TUMOR': 0.06, TUMOR: 0.94 },
-        confidence: isNoTumor ? 0.96 : 0.94,
+        prediction: 'TUMOR',
+        probabilities: { 'NO TUMOR': 0.06, TUMOR: 0.94 },
+        confidence: 0.94,
         threshold: model.threshold,
         model_name: model.name,
         framework: model.framework,
