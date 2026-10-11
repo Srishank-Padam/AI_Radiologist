@@ -267,3 +267,61 @@ async function generateMockPrediction(modality, file, options = {}) {
 
   throw new Error(`Unsupported modality: ${modality}`);
 }
+
+/**
+ * Request PDF medical report generation from the backend and trigger browser download
+ * @param {object} result - The prediction result object containing modality, prediction, images, metadata
+ */
+export async function downloadPdfReport(result) {
+  if (!result) {
+    throw new Error('No analysis result provided for PDF report generation.');
+  }
+
+  const res = await fetch(`${BASE_URL}/report/pdf`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(result),
+  });
+
+  if (!res.ok) {
+    let errorDetail = `PDF generation failed with HTTP ${res.status}`;
+    try {
+      const errJson = await res.json();
+      if (errJson.detail) errorDetail = errJson.detail;
+      else if (errJson.error) errorDetail = errJson.error;
+    } catch (_) {}
+    throw new Error(errorDetail);
+  }
+
+  const blob = await res.blob();
+  if (blob.size === 0) {
+    throw new Error('Received an empty PDF report from the server.');
+  }
+
+  // Determine filename from Content-Disposition header if present
+  let filename = `MEDVISION_AI_Report_${result.modality || 'scan'}_${Date.now()}.pdf`;
+  const disposition = res.headers.get('Content-Disposition');
+  if (disposition && disposition.includes('filename=')) {
+    const match = disposition.match(/filename=["']?([^"';]+)["']?/);
+    if (match && match[1]) {
+      filename = match[1];
+    }
+  }
+
+  const blobUrl = window.URL.createObjectURL(blob);
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.style.display = 'none';
+  downloadAnchor.href = blobUrl;
+  downloadAnchor.download = filename;
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+
+  setTimeout(() => {
+    window.URL.revokeObjectURL(blobUrl);
+    downloadAnchor.remove();
+  }, 1000);
+
+  return { success: true, filename };
+}

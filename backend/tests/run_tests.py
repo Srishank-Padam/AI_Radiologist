@@ -26,6 +26,13 @@ from backend.tests.test_modality_adapters_mocked import (
     test_ct_mocked_adapter,
     test_mri_mocked_adapter
 )
+from backend.tests.test_pdf_report import (
+    test_pdf_endpoint_missing_original_image,
+    test_pdf_endpoint_with_missing_gradcam,
+    test_real_xray_pdf_generation,
+    test_real_ct_pdf_generation,
+    test_real_mri_pdf_generation
+)
 
 UNIT_TESTS = [
     ("Health: /health", test_health_endpoint),
@@ -39,6 +46,8 @@ UNIT_TESTS = [
     ("Adapter Mock: X-Ray", test_xray_mocked_adapter),
     ("Adapter Mock: CT Scan", test_ct_mocked_adapter),
     ("Adapter Mock: Brain MRI", test_mri_mocked_adapter),
+    ("PDF Report: Missing Original Image Validation", test_pdf_endpoint_missing_original_image),
+    ("PDF Report: Missing Grad-CAM Graceful Handling", test_pdf_endpoint_with_missing_gradcam),
 ]
 
 def run_all(include_smoke=False):
@@ -71,6 +80,9 @@ def run_all(include_smoke=False):
             ("Real Inference: X-Ray Pneumonia Ensemble", test_real_xray_inference_smoke),
             ("Real Inference: CT Scan Multi-Model Pipeline", test_real_ct_inference_smoke),
             ("Real Inference: Brain MRI Dementia/Tumor Pipeline", test_real_mri_inference_smoke),
+            ("Real PDF Report: Real X-Ray Scan to Downloadable PDF", test_real_xray_pdf_generation),
+            ("Real PDF Report: Real CT Scan to Downloadable PDF", test_real_ct_pdf_generation),
+            ("Real PDF Report: Real MRI Scan to Downloadable PDF", test_real_mri_pdf_generation),
         ]
         for name, test_fn in SMOKE_TESTS:
             try:
