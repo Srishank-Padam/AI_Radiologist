@@ -96,11 +96,21 @@ class MRIService:
                     probs = {k.upper(): round(float(v), 4) for k, v in res.get("probabilities", {}).items()}
                     confidence = round(float(res.get("confidence", 0.0)), 4)
                     
-                    cam_file = res.get("gradcam_panel") or res.get("gradcam")
+                    cam_file = res.get("gradcam") or res.get("gradcam_overlay")
                     cam_b64 = orig_b64
                     if cam_file and Path(cam_file).exists():
                         with Image.open(cam_file) as c_img:
                             cam_b64 = pil_to_base64_data_url(c_img)
+
+                    visualizations = {"original": orig_b64}
+                    if cam_b64 != orig_b64:
+                        visualizations["overlay"] = cam_b64
+                    if res.get("gradcam_heatmap") and Path(res["gradcam_heatmap"]).exists():
+                        with Image.open(res["gradcam_heatmap"]) as hm_img:
+                            visualizations["heatmap"] = pil_to_base64_data_url(hm_img)
+                    if res.get("gradcam_fused") and Path(res["gradcam_fused"]).exists():
+                        with Image.open(res["gradcam_fused"]) as f_img:
+                            visualizations["fused_overlay"] = pil_to_base64_data_url(f_img)
 
                     if pred_class != "NON DEMENTED":
                         warnings.append(
@@ -126,10 +136,11 @@ class MRIService:
                         },
                         gradcam_png_base64=cam_b64,
                         original_png_base64=orig_b64,
+                        visualizations=visualizations,
                         disclaimer=settings.DEFAULT_DISCLAIMER,
                         warnings=warnings,
                         status="success",
-                        metadata={"raw": res}
+                        metadata={"raw": res, "visualizations": visualizations}
                     )
 
                 # Default / Cascade Mode:
@@ -146,11 +157,23 @@ class MRIService:
                         "NO TUMOR": prob_no_tumor,
                     }
                     confidence = prob_tumor
-                    cam_file = t_res.get("gradcam_panel") or t_res.get("gradcam_overlay")
+                    cam_file = t_res.get("gradcam_overlay")
                     cam_b64 = orig_b64
                     if cam_file and Path(cam_file).exists():
                         with Image.open(cam_file) as c_img:
                             cam_b64 = pil_to_base64_data_url(c_img)
+
+                    visualizations = {"original": orig_b64}
+                    if cam_b64 != orig_b64:
+                        visualizations["overlay"] = cam_b64
+                    crop_file = t_res.get("gradcam_cropped")
+                    if crop_file and Path(crop_file).exists():
+                        with Image.open(crop_file) as cr_img:
+                            visualizations["cropped"] = pil_to_base64_data_url(cr_img)
+                    heat_file = t_res.get("gradcam_heatmap")
+                    if heat_file and Path(heat_file).exists():
+                        with Image.open(heat_file) as hm_img:
+                            visualizations["heatmap"] = pil_to_base64_data_url(hm_img)
 
                     warnings.append(
                         "ACUTE FINDING: Intracranial space-occupying lesion detected. "
@@ -174,10 +197,11 @@ class MRIService:
                         },
                         gradcam_png_base64=cam_b64,
                         original_png_base64=orig_b64,
+                        visualizations=visualizations,
                         disclaimer=settings.DEFAULT_DISCLAIMER,
                         warnings=warnings,
                         status="success",
-                        metadata={"tumor_result": t_res}
+                        metadata={"tumor_result": t_res, "visualizations": visualizations}
                     )
 
                 else:
@@ -197,11 +221,23 @@ class MRIService:
                     for k, v in res.get("probabilities", {}).items():
                         probs[k.upper()] = round(float(v), 4)
 
-                    cam_file = res.get("gradcam_panel") or res.get("gradcam") or t_res.get("gradcam_overlay")
+                    cam_file = res.get("gradcam") or t_res.get("gradcam_overlay")
                     cam_b64 = orig_b64
                     if cam_file and Path(cam_file).exists():
                         with Image.open(cam_file) as c_img:
                             cam_b64 = pil_to_base64_data_url(c_img)
+
+                    visualizations = {"original": orig_b64}
+                    if cam_b64 != orig_b64:
+                        visualizations["overlay"] = cam_b64
+                    crop_file = t_res.get("gradcam_cropped")
+                    if crop_file and Path(crop_file).exists():
+                        with Image.open(crop_file) as cr_img:
+                            visualizations["cropped"] = pil_to_base64_data_url(cr_img)
+                    heat_file = res.get("gradcam_heatmap") or t_res.get("gradcam_heatmap")
+                    if heat_file and Path(heat_file).exists():
+                        with Image.open(heat_file) as hm_img:
+                            visualizations["heatmap"] = pil_to_base64_data_url(hm_img)
 
                     confidence = prob_no_tumor
 
@@ -225,12 +261,14 @@ class MRIService:
                         },
                         gradcam_png_base64=cam_b64,
                         original_png_base64=orig_b64,
+                        visualizations=visualizations,
                         disclaimer=settings.DEFAULT_DISCLAIMER,
                         warnings=warnings,
                         status="success",
                         metadata={
                             "tumor_result": t_res,
-                            "dementia_result": res
+                            "dementia_result": res,
+                            "visualizations": visualizations
                         }
                     )
 

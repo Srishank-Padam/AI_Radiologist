@@ -275,9 +275,41 @@ export function generateMedicalCanvasImages(modality, subtype = 'default') {
     }
   }
 
+  // Generate blended overlay canvas
+  const overlayCanvas = document.createElement('canvas');
+  overlayCanvas.width = size;
+  overlayCanvas.height = size;
+  const ovCtx = overlayCanvas.getContext('2d');
+  ovCtx.drawImage(originalCanvas, 0, 0);
+  ovCtx.globalAlpha = 0.55;
+  ovCtx.drawImage(gradcamCanvas, 0, 0);
+  ovCtx.globalAlpha = 1.0;
+
+  const originalUrl = originalCanvas.toDataURL('image/png');
+  const heatmapUrl = gradcamCanvas.toDataURL('image/png');
+  const overlayUrl = overlayCanvas.toDataURL('image/png');
+
+  const visualizations = {
+    original: originalUrl,
+    overlay: overlayUrl,
+    heatmap: heatmapUrl,
+  };
+
+  if (modality === 'mri') {
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = size;
+    cropCanvas.height = size;
+    const cCtx = cropCanvas.getContext('2d');
+    cCtx.fillStyle = '#060a12';
+    cCtx.fillRect(0, 0, size, size);
+    cCtx.drawImage(originalCanvas, size * 0.1, size * 0.08, size * 0.8, size * 0.84, size * 0.05, size * 0.05, size * 0.9, size * 0.9);
+    visualizations.cropped = cropCanvas.toDataURL('image/png');
+  }
+
   return {
-    original: originalCanvas.toDataURL('image/png'),
-    gradcam: gradcamCanvas.toDataURL('image/png'),
+    original: originalUrl,
+    gradcam: overlayUrl,
+    visualizations,
   };
 }
 

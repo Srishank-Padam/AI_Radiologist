@@ -103,7 +103,7 @@ export default function Upload({
 
         {/* Dynamic Display: If actively analyzing, show the Medical AI Loader sequence */}
         {isAnalyzing ? (
-          <AnalysisLoader phase={analysisPhase} previewUrl={previewUrl} />
+          <AnalysisLoader phase={analysisPhase} previewUrl={previewUrl} modality={modality} />
         ) : (
           <>
             {/* Header matching wireframe */}

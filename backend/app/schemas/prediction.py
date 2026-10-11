@@ -15,6 +15,7 @@ class PredictionResponse(BaseModel):
     metrics: Optional[Dict[str, str]] = None
     gradcam_png_base64: Optional[str] = None
     original_png_base64: Optional[str] = None
+    visualizations: Optional[Dict[str, str]] = None
     disclaimer: str
     warnings: List[str] = Field(default_factory=list)
     status: str = "success"

@@ -131,12 +131,14 @@ class XRayService:
                     metrics=metrics,
                     gradcam_png_base64=cam_b64,
                     original_png_base64=orig_b64,
+                    visualizations={"original": orig_b64, "overlay": cam_b64},
                     disclaimer=settings.DEFAULT_DISCLAIMER,
                     warnings=warnings,
                     status="success",
                     metadata={
                         "router": router_res,
                         "ensemble_votes": prediction.get("votes") if branch == "CHEST" else None,
+                        "visualizations": {"original": orig_b64, "overlay": cam_b64},
                     }
                 )
             except Exception as e:

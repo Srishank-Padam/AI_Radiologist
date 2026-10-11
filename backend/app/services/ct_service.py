@@ -139,6 +139,7 @@ class CTService:
                     metrics=metrics,
                     gradcam_png_base64=cam_b64,
                     original_png_base64=orig_b64,
+                    visualizations={"original": orig_b64, "overlay": cam_b64},
                     disclaimer=settings.DEFAULT_DISCLAIMER,
                     warnings=warnings,
                     status="success",
@@ -146,6 +147,7 @@ class CTService:
                         "router": router_res,
                         "layer_weights": res.get("gradcam_layer_weights", {}),
                         "clinical_summary": expert_res.get("clinical_summary"),
+                        "visualizations": {"original": orig_b64, "overlay": cam_b64},
                     }
                 )
 

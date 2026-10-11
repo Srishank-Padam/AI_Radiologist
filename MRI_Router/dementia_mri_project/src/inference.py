@@ -65,6 +65,8 @@ class DementiaPredictor:
                                        name=Path(image_path).stem + "_gradcam", multi=multi_layer)
             res["gradcam"] = info["files"]["overlay"]
             res["gradcam_panel"] = info["files"]["panel"]
+            res["gradcam_heatmap"] = info["files"].get("heatmap")
+            res["gradcam_fused"] = info["files"].get("fused_overlay")
             res["gradcam_target_class"] = info["target_class"]
             res["gradcam_checks_passed"] = info["checks"]["all_layer_checks_passed"]
         return res

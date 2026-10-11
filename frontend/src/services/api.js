@@ -152,6 +152,7 @@ async function generateMockPrediction(modality, file, options = {}) {
         metrics: model.metrics,
         gradcam_png_base64: canvasImages.gradcam,
         original_png_base64: canvasImages.original,
+        visualizations: canvasImages.visualizations,
         disclaimer: DISCLAIMER_TEXT,
         warnings: [],
       };
@@ -171,6 +172,7 @@ async function generateMockPrediction(modality, file, options = {}) {
         metrics: model.metrics,
         gradcam_png_base64: canvasImages.gradcam,
         original_png_base64: canvasImages.original,
+        visualizations: canvasImages.visualizations,
         disclaimer: DISCLAIMER_TEXT,
         warnings: [],
       };
@@ -193,6 +195,7 @@ async function generateMockPrediction(modality, file, options = {}) {
         metrics: model.metrics,
         gradcam_png_base64: canvasImages.gradcam,
         original_png_base64: canvasImages.original,
+        visualizations: canvasImages.visualizations,
         disclaimer: DISCLAIMER_TEXT,
         warnings: ['CRITICAL FINDING: Acute intracranial hyperdensity detected.'],
       };
@@ -212,6 +215,7 @@ async function generateMockPrediction(modality, file, options = {}) {
         metrics: model.metrics,
         gradcam_png_base64: canvasImages.gradcam,
         original_png_base64: canvasImages.original,
+        visualizations: canvasImages.visualizations,
         disclaimer: DISCLAIMER_TEXT,
         warnings: [],
       };
@@ -234,6 +238,7 @@ async function generateMockPrediction(modality, file, options = {}) {
         metrics: model.metrics,
         gradcam_png_base64: canvasImages.gradcam,
         original_png_base64: canvasImages.original,
+        visualizations: canvasImages.visualizations,
         disclaimer: DISCLAIMER_TEXT,
         warnings: ['NEURODEGENERATIVE FINDING: Structural pattern matches significant ventricular enlargement.'],
       };
@@ -253,6 +258,7 @@ async function generateMockPrediction(modality, file, options = {}) {
         metrics: model.metrics,
         gradcam_png_base64: canvasImages.gradcam,
         original_png_base64: canvasImages.original,
+        visualizations: canvasImages.visualizations,
         disclaimer: DISCLAIMER_TEXT,
         warnings: [],
       };

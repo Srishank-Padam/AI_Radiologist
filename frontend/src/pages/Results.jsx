@@ -96,11 +96,14 @@ export default function Results({ result, onAnalyzeAnother, onBackToSelection })
         {/* 1. Large Result Card (Primary Prediction + Confidence Score) */}
         <ResultCard result={result} />
 
-        {/* 2. Side-by-Side / Overlay Scan Viewer with Grad-CAM */}
+        {/* 2. Primary Medical Scan & Grad-CAM Visualization */}
         <ScanViewer
           originalScanUrl={result.original_png_base64}
           gradcamScanUrl={result.gradcam_png_base64}
           modality={result.modality}
+          visualizations={result.visualizations || result.metadata?.visualizations}
+          prediction={result.prediction}
+          metadata={result.metadata}
         />
 
         {/* 3. Class Probability Softmax Bars */}
