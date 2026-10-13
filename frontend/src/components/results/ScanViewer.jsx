@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Eye, EyeOff, Sliders, Columns, Layers, Maximize2, Minimize2, Sparkles } from 'lucide-react';
+import { isDiseasePositive } from '../../utils/diseaseStatus';
 
 export default function ScanViewer({
   originalScanUrl,
@@ -144,7 +145,10 @@ export default function ScanViewer({
           </span>
           {prediction && (
             <span className="text-slate-500 font-mono text-[11px] hidden sm:inline">
-              • Target: {prediction}
+              • Target:{' '}
+              <span className={isDiseasePositive(prediction) ? 'text-red-400 font-semibold' : 'text-emerald-400 font-semibold'}>
+                {prediction}
+              </span>
             </span>
           )}
         </div>

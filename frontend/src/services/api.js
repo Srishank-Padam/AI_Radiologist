@@ -325,3 +325,35 @@ export async function downloadPdfReport(result) {
 
   return { success: true, filename };
 }
+
+/**
+ * Send a query to the AI Radiologist Assistant with optional scan context
+ * @param {string} message - User question
+ * @param {object} context - Active scan context (prediction, modality, confidence)
+ * @param {Array} history - Previous message history [{role: 'user'|'assistant', content: string}]
+ */
+export async function queryAssistant(message, context = null, history = []) {
+  try {
+    const res = await fetch(`${BASE_URL}/assistant/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message,
+        context,
+        history,
+      }),
+    });
+
+    if (res.ok) {
+      return await res.json();
+    }
+
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Assistant responded with status ${res.status}`);
+  } catch (err) {
+    console.error('AI Assistant API call error:', err);
+    throw err;
+  }
+}

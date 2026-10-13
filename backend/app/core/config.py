@@ -39,5 +39,9 @@ class Settings:
         "Grad-CAM heatmaps highlight model-attributed regions and are not lesion segmentation."
     )
 
+    # AI Assistant (Gemini API with Smart Clinical Knowledge Engine fallback)
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+
 settings = Settings()
 settings.TEMP_DIR.mkdir(parents=True, exist_ok=True)

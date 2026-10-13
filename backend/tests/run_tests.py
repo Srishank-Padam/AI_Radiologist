@@ -33,6 +33,11 @@ from backend.tests.test_pdf_report import (
     test_real_ct_pdf_generation,
     test_real_mri_pdf_generation
 )
+from backend.tests.test_assistant import (
+    test_assistant_general_query,
+    test_assistant_contextual_scan_query,
+    test_assistant_gradcam_query
+)
 
 UNIT_TESTS = [
     ("Health: /health", test_health_endpoint),
@@ -48,6 +53,9 @@ UNIT_TESTS = [
     ("Adapter Mock: Brain MRI", test_mri_mocked_adapter),
     ("PDF Report: Missing Original Image Validation", test_pdf_endpoint_missing_original_image),
     ("PDF Report: Missing Grad-CAM Graceful Handling", test_pdf_endpoint_with_missing_gradcam),
+    ("AI Assistant: General Medical Query", test_assistant_general_query),
+    ("AI Assistant: Contextual Scan Query", test_assistant_contextual_scan_query),
+    ("AI Assistant: Grad-CAM Explainability Query", test_assistant_gradcam_query),
 ]
 
 def run_all(include_smoke=False):

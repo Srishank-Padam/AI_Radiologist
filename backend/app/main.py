@@ -9,7 +9,7 @@ from .core.errors import (
     medical_ai_exception_handler,
     generic_exception_handler
 )
-from .api.routes import health, modalities, xray, ct, mri, report
+from .api.routes import health, modalities, xray, ct, mri, report, assistant
 from .schemas.prediction import PredictionResponse
 
 app = FastAPI(
@@ -40,6 +40,7 @@ app.include_router(xray.router)
 app.include_router(ct.router)
 app.include_router(mri.router)
 app.include_router(report.router)
+app.include_router(assistant.router)
 
 # Unified Root Level Prediction Route for Frontend Compatibility
 @app.post("/predict/{modality}", response_model=PredictionResponse, tags=["Unified Predict"])

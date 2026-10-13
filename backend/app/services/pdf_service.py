@@ -146,6 +146,24 @@ def _format_task_title(modality: str, routed_to: Optional[str] = None) -> str:
     return f"{mod.upper()} Medical Imaging Analysis"
 
 
+def _is_disease_positive(prediction: str) -> bool:
+    """Helper to detect whether prediction is a positive disease/abnormal finding."""
+    if not prediction or not isinstance(prediction, str):
+        return False
+    p = prediction.upper()
+    if any(neg in p for neg in [
+        "NO TUMOR", "NO BLEED", "NO HEMORRHAGE", "NON-DEMENTED",
+        "BRAIN IS SAFE", "SAFE", "HEALTHY", "BENIGN"
+    ]):
+        return False
+    if "NORMAL" in p and "ABNORMAL" not in p:
+        return False
+    return any(pos in p for pos in [
+        "TUMOR", "HEMORRHAGE", "BLEED", "PNEUMONIA", "COVID",
+        "ABNORMAL", "DEMENTIA", "ALERT", "CRITICAL", "POSITIVE"
+    ])
+
+
 def _deterministic_model_explanation(
     modality: str,
     prediction: str,
@@ -282,12 +300,13 @@ def generate_medical_pdf_report(report_data: ReportRequest) -> bytes:
         leading=9.5,
         textColor=TEXT_MUTED
     )
+    is_positive = _is_disease_positive(report_data.prediction)
     val_pred_style = ParagraphStyle(
         "CardValuePred",
         fontName="Helvetica-Bold",
         fontSize=13,
         leading=15,
-        textColor=NAVY_PRIMARY
+        textColor=ALERT_RED if is_positive else (ALERT_GREEN if not is_positive and report_data.prediction != "UNKNOWN" else NAVY_PRIMARY)
     )
     val_normal_style = ParagraphStyle(
         "CardValueNormal",
@@ -411,8 +430,9 @@ def generate_medical_pdf_report(report_data: ReportRequest) -> bytes:
         report_data.confidence
     )
 
+    badge_html = f'<font color="#DC2626"><b>[POSITIVE FINDING DETECTED]</b></font><br/>' if is_positive else ""
     pred_cell = [
-        Paragraph("PREDICTED CLASS", label_style),
+        Paragraph(f"{badge_html}PREDICTED CLASS", label_style),
         Spacer(1, 1),
         Paragraph(f"<b>{report_data.prediction}</b>", val_pred_style),
         Spacer(1, 4),
