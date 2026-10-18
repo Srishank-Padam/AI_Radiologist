@@ -160,7 +160,12 @@ def explain_image(model, path, spec, class_names, target=None, out_dir=None, nam
             Image.fromarray((overlay(base, r["fused"]) * 255).astype(np.uint8)).save(out_dir / f"{name}_fused_overlay.png")
         with open(out_dir / f"{name}_info.json", "w") as f:
             json.dump(info, f, indent=2, default=str)
-        info["files"] = {"panel": str(out_dir / f"{name}_panel.png"), "overlay": str(out_dir / f"{name}_overlay.png")}
+        info["files"] = {
+            "panel": str(out_dir / f"{name}_panel.png"),
+            "overlay": str(out_dir / f"{name}_overlay.png"),
+            "heatmap": str(out_dir / f"{name}_heatmap.png"),
+            "fused_overlay": str(out_dir / f"{name}_fused_overlay.png") if multi else None,
+        }
     return info, r, x
 
 

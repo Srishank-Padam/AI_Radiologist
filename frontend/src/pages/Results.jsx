@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-import { ArrowLeft, Download, RotateCcw, Activity } from 'lucide-react';
+import { ArrowLeft, Download, RotateCcw, Activity, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { downloadPdfReport } from '../services/api';
 import ResultCard from '../components/results/ResultCard';
 import ProbabilityBars from '../components/results/ProbabilityBars';
 import ScanViewer from '../components/results/ScanViewer';
@@ -9,7 +10,9 @@ import Disclaimer from '../components/results/Disclaimer';
 
 export default function Results({ result, onAnalyzeAnother, onBackToSelection }) {
   const sessionId = '94821';
-
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState(null);
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   if (!result) {
     return (
@@ -25,20 +28,23 @@ export default function Results({ result, onAnalyzeAnother, onBackToSelection })
     );
   }
 
-  const handleDownloadJson = () => {
+  const handleDownloadPdf = async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+    setDownloadError(null);
+    setDownloadSuccess(false);
+
     try {
-      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(result, null, 2));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute('href', dataStr);
-      downloadAnchor.setAttribute(
-        'download',
-        `medvision_analysis_${result.modality}_${result.prediction.toLowerCase()}_${Date.now()}.json`
-      );
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-    } catch (e) {
-      console.error('Download error:', e);
+      await downloadPdfReport(result);
+      setDownloadSuccess(true);
+      setTimeout(() => {
+        setDownloadSuccess(false);
+      }, 4000);
+    } catch (err) {
+      console.error('PDF Report generation error:', err);
+      setDownloadError(err.message || 'Failed to generate PDF report.');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -72,14 +78,19 @@ export default function Results({ result, onAnalyzeAnother, onBackToSelection })
           </div>
 
           {/* Action CTAs */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
             <button
               type="button"
-              onClick={handleDownloadJson}
-              className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 hover:text-white text-xs font-mono tracking-wider flex items-center gap-2 transition-all cursor-pointer"
+              onClick={handleDownloadPdf}
+              disabled={isDownloading}
+              className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 hover:text-white text-xs font-mono tracking-wider flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Download className="w-3.5 h-3.5 text-cyan-400" />
-              <span>DOWNLOAD JSON REPORT</span>
+              {isDownloading ? (
+                <Loader2 className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5 text-cyan-400" />
+              )}
+              <span>{isDownloading ? 'GENERATING PDF...' : 'DOWNLOAD PDF REPORT'}</span>
             </button>
 
             <button
@@ -93,14 +104,32 @@ export default function Results({ result, onAnalyzeAnother, onBackToSelection })
           </div>
         </div>
 
+        {/* Download Feedback Alerts */}
+        {downloadError && (
+          <div className="flex items-center gap-2.5 text-xs font-mono text-rose-300 bg-rose-950/40 border border-rose-500/30 px-4 py-2.5 rounded-xl">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{downloadError}</span>
+          </div>
+        )}
+
+        {downloadSuccess && (
+          <div className="flex items-center gap-2.5 text-xs font-mono text-emerald-300 bg-emerald-950/40 border border-emerald-500/30 px-4 py-2.5 rounded-xl">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>Medical PDF report successfully generated and downloaded.</span>
+          </div>
+        )}
+
         {/* 1. Large Result Card (Primary Prediction + Confidence Score) */}
         <ResultCard result={result} />
 
-        {/* 2. Side-by-Side / Overlay Scan Viewer with Grad-CAM */}
+        {/* 2. Primary Medical Scan & Grad-CAM Visualization */}
         <ScanViewer
           originalScanUrl={result.original_png_base64}
           gradcamScanUrl={result.gradcam_png_base64}
           modality={result.modality}
+          visualizations={result.visualizations || result.metadata?.visualizations}
+          prediction={result.prediction}
+          metadata={result.metadata}
         />
 
         {/* 3. Class Probability Softmax Bars */}

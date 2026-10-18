@@ -40,6 +40,8 @@ export function useAnalysis() {
 
   const setScanFile = useCallback((file, preview = null) => {
     setCurrentFile(file);
+    setAnalysisResult(null);
+    clearLastAnalysis();
     if (preview) {
       setPreviewUrl(preview);
     } else if (file instanceof File) {
@@ -62,6 +64,8 @@ export function useAnalysis() {
 
     setIsAnalyzing(true);
     setError(null);
+    setAnalysisResult(null);
+    clearLastAnalysis();
 
     try {
       // Step 1: PREPARING IMAGE

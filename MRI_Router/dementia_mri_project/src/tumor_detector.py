@@ -283,10 +283,26 @@ class BrainTumorClassifier:
                 else:
                     full_overlay = overlay
 
-                # Save overlay
+                # Save overlay (1:1 aligned with original MRI)
                 gradcam_overlay_file = out_path / f"{stem}_tumor_gradcam.png"
                 cv2.imwrite(str(gradcam_overlay_file), full_overlay)
                 gradcam_overlay_path = str(gradcam_overlay_file)
+
+                # Save cropped brain slice
+                gradcam_cropped_file = out_path / f"{stem}_tumor_cropped.png"
+                cv2.imwrite(str(gradcam_cropped_file), cropped)
+                gradcam_cropped_path = str(gradcam_cropped_file)
+
+                # Save pure activation heatmap (aligned to full MRI coordinate space)
+                full_heatmap = np.zeros_like(orig_img)
+                if box is not None:
+                    x1, y1, x2, y2 = box
+                    full_heatmap[y1:y2, x1:x2] = colored_heatmap
+                else:
+                    full_heatmap = colored_heatmap
+                gradcam_heatmap_file = out_path / f"{stem}_tumor_heatmap.png"
+                cv2.imwrite(str(gradcam_heatmap_file), full_heatmap)
+                gradcam_heatmap_path = str(gradcam_heatmap_file)
 
                 # 4-panel diagnostic view: [Original Scan] | [Cropped Brain] | [Pure Heatmap] | [Grad-CAM Overlay]
                 panel_h = 260
@@ -312,6 +328,8 @@ class BrainTumorClassifier:
             "status_code": "TUMOR_POSITIVE" if has_tumor else "TUMOR_NEGATIVE",
             "model_path": str(self.model_path),
             "gradcam_overlay": gradcam_overlay_path,
+            "gradcam_cropped": locals().get("gradcam_cropped_path"),
+            "gradcam_heatmap": locals().get("gradcam_heatmap_path"),
             "gradcam_panel": gradcam_panel_path,
             "layers_fused": ['conv0', 'bn0', 'activation', 'max_pool0', 'max_pool1']
         }

@@ -6,6 +6,7 @@ import Upload from './pages/Upload';
 import Results from './pages/Results';
 import { useAnalysis } from './hooks/useAnalysis';
 import { generateMedicalCanvasImages } from './utils/mockData';
+import AIAssistantWidget from './components/assistant/AIAssistantWidget';
 
 export default function App() {
   const {
@@ -100,6 +101,13 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* Floating AI Radiologist Copilot Assistant Widget */}
+      <AIAssistantWidget
+        currentStep={currentStep}
+        selectedModality={selectedModality}
+        analysisResult={analysisResult}
+      />
     </div>
   );
 }

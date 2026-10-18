@@ -9,7 +9,7 @@ const PHASES = [
   { key: 'complete', text: 'ANALYSIS COMPLETE', sub: 'Aggregating class probabilities and feature heatmaps' },
 ];
 
-export default function AnalysisLoader({ phase = 'preparing', previewUrl }) {
+export default function AnalysisLoader({ phase = 'preparing', previewUrl, modality = 'Scan' }) {
   const currentPhaseIndex = Math.max(
     0,
     PHASES.findIndex((p) => p.key === phase)
@@ -30,7 +30,7 @@ export default function AnalysisLoader({ phase = 'preparing', previewUrl }) {
           <img
             src={previewUrl}
             alt="Active scan analysis"
-            className="w-full h-full object-contain filter contrast-125 opacity-80"
+            className="w-full h-full object-contain filter contrast-125 opacity-80 select-none"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-cyan-400/40">
@@ -38,9 +38,16 @@ export default function AnalysisLoader({ phase = 'preparing', previewUrl }) {
           </div>
         )}
 
-        {/* Sweeping Laser Scan Line */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="w-full h-1.5 bg-gradient-to-r from-transparent via-cyan-300 to-transparent shadow-[0_0_20px_#22d3ee] animate-scan-sweep" />
+        {/* Sweeping Laser Scan Line with Aura Band */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-10">
+          <div className="w-full animate-scan-sweep">
+            {/* Luminous aura band extending above beam */}
+            <div className="w-full h-8 bg-gradient-to-b from-transparent via-cyan-400/15 to-transparent -mb-4" />
+            {/* Intense core laser beam */}
+            <div className="w-full h-1.5 bg-gradient-to-r from-transparent via-cyan-300 to-transparent shadow-[0_0_25px_#22d3ee,0_0_12px_#06b6d4]" />
+            {/* Trailing luminous laser aura */}
+            <div className="w-full h-8 bg-gradient-to-b from-cyan-400/15 via-cyan-400/5 to-transparent -mt-0.5" />
+          </div>
         </div>
 
         {/* Holographic grid overlay */}
@@ -50,13 +57,18 @@ export default function AnalysisLoader({ phase = 'preparing', previewUrl }) {
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-28 h-28 rounded-full border border-cyan-400/20 border-dashed animate-spin" style={{ animationDuration: '10s' }} />
         </div>
+
+        {/* Modality acquisition watermark */}
+        <div className="absolute bottom-2.5 left-3 text-[9px] font-mono text-cyan-400/70 tracking-widest uppercase z-20 pointer-events-none">
+          {modality ? modality.toUpperCase() : 'SCAN'} • INFERENCE ACQUISITION
+        </div>
       </div>
 
       {/* Dynamic Text Phases */}
       <div className="space-y-3">
         <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-cyan-300 text-xs font-mono uppercase tracking-widest">
           <Activity className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-          <span>Inference Engine Active</span>
+          <span>{modality ? modality.toUpperCase() : 'SCAN'} INFERENCE ACTIVE</span>
         </div>
 
         <h2 className="text-xl sm:text-2xl font-bold text-white tracking-wider font-heading uppercase text-cyan-300">

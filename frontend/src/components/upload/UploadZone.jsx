@@ -72,7 +72,7 @@ export default function UploadZone({
       >
         {/* Animated Laser Scanning Beam on Drag */}
         {isDragOver && (
-          <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
             <div className="w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#22d3ee] animate-scan-sweep" />
           </div>
         )}

@@ -1,6 +1,6 @@
 import React from 'react';
-import { AlertTriangle, AlertOctagon } from 'lucide-react';
-
+import { AlertTriangle, AlertOctagon, AlertCircle } from 'lucide-react';
+import { isDiseasePositive } from '../../utils/diseaseStatus';
 
 export default function ResultCard({ result }) {
   if (!result) return null;
@@ -15,13 +15,7 @@ export default function ResultCard({ result }) {
   } = result;
 
   const isUnknown = routed_to === 'unknown' || prediction === 'UNKNOWN';
-  const isPositiveFinding =
-    prediction === 'PNEUMONIA' ||
-    prediction === 'ABNORMAL' ||
-    prediction === 'COVID-19' ||
-    prediction === 'TUMOR' ||
-    prediction.includes('BLEED') ||
-    prediction.includes('DEMENTIA');
+  const isPositiveFinding = isDiseasePositive(prediction);
 
   const confidencePct = (confidence * 100).toFixed(1);
 
@@ -45,18 +39,36 @@ export default function ResultCard({ result }) {
         isUnknown
           ? 'border-amber-500/40 bg-amber-950/20'
           : isPositiveFinding
-          ? 'border-cyan-500/40 bg-slate-900/80 shadow-[0_0_35px_rgba(6,182,212,0.15)]'
-          : 'border-emerald-500/40 bg-slate-900/80'
+          ? 'border-red-500/50 bg-slate-900/90 shadow-[0_0_40px_rgba(239,68,68,0.22)]'
+          : 'border-emerald-500/40 bg-slate-900/80 shadow-[0_0_35px_rgba(16,185,129,0.15)]'
       }`}
     >
       {/* Background ambient glow */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
+      <div
+        className={`absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl pointer-events-none ${
+          isPositiveFinding ? 'bg-red-500/10' : 'bg-cyan-500/5'
+        }`}
+      />
 
       {/* Top Header / Router Breadcrumb */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <span className="text-xs font-mono uppercase tracking-wider text-cyan-400 font-semibold px-2.5 py-1 rounded bg-cyan-950/70 border border-cyan-500/20">
-          {workflowBadge}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`text-xs font-mono uppercase tracking-wider font-semibold px-2.5 py-1 rounded ${
+              isPositiveFinding
+                ? 'text-red-400 bg-red-950/70 border border-red-500/30'
+                : 'text-cyan-400 bg-cyan-950/70 border border-cyan-500/20'
+            }`}
+          >
+            {workflowBadge}
+          </span>
+          {isPositiveFinding && (
+            <span className="flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider text-red-400 bg-red-500/15 border border-red-500/30 px-2 py-0.5 rounded-full animate-pulse">
+              <AlertCircle className="w-3 h-3 text-red-400" />
+              <span>Positive Finding</span>
+            </span>
+          )}
+        </div>
         <div className="text-[11px] font-mono text-slate-400">
           Threshold: <span className="text-slate-200">{(threshold * 100).toFixed(0)}%</span>
         </div>
@@ -90,7 +102,9 @@ export default function ResultCard({ result }) {
             <div className="flex items-baseline gap-3">
               <h2
                 className={`text-3xl sm:text-4xl font-extrabold tracking-tight font-heading ${
-                  isPositiveFinding ? 'text-cyan-300 medical-glow-cyan' : 'text-emerald-400'
+                  isPositiveFinding
+                    ? 'text-red-500 drop-shadow-[0_0_20px_rgba(239,68,68,0.7)]'
+                    : 'text-emerald-400'
                 }`}
               >
                 {prediction}
@@ -109,16 +123,22 @@ export default function ResultCard({ result }) {
               Confidence Score
             </span>
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl sm:text-5xl font-mono font-bold text-white tracking-tight">
+              <span
+                className={`text-4xl sm:text-5xl font-mono font-bold tracking-tight ${
+                  isPositiveFinding ? 'text-red-400' : 'text-white'
+                }`}
+              >
                 {confidencePct}%
               </span>
-              <span className="text-xs font-mono text-cyan-400">P(Class)</span>
+              <span className={`text-xs font-mono ${isPositiveFinding ? 'text-red-400' : 'text-cyan-400'}`}>
+                P(Class)
+              </span>
             </div>
             <div className="w-full bg-black/50 h-2 rounded-full overflow-hidden border border-white/5">
               <div
                 className={`h-full rounded-full transition-all duration-1000 ${
                   isPositiveFinding
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 shadow-[0_0_10px_#06b6d4]'
+                    ? 'bg-gradient-to-r from-red-500 to-rose-600 shadow-[0_0_12px_#ef4444]'
                     : 'bg-emerald-400'
                 }`}
                 style={{ width: `${confidencePct}%` }}

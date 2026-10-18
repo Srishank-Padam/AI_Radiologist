@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart3 } from 'lucide-react';
+import { isDiseasePositive } from '../../utils/diseaseStatus';
 
 export default function ProbabilityBars({ probabilities = {}, predictedClass }) {
   const [animatedWidths, setAnimatedWidths] = useState({});
@@ -30,6 +31,7 @@ export default function ProbabilityBars({ probabilities = {}, predictedClass }) 
           const val = typeof rawVal === 'number' ? rawVal : parseFloat(rawVal) || 0;
           const pct = (val * 100).toFixed(1);
           const isMax = className === predictedClass;
+          const isPos = isDiseasePositive(className);
           const currentWidth = animatedWidths[className] !== undefined
             ? `${(animatedWidths[className] * 100).toFixed(1)}%`
             : '0%';
@@ -37,10 +39,28 @@ export default function ProbabilityBars({ probabilities = {}, predictedClass }) 
           return (
             <div key={className} className="space-y-1.5">
               <div className="flex items-center justify-between text-xs font-mono">
-                <span className={`font-medium ${isMax ? 'text-cyan-300 font-bold' : 'text-slate-300'}`}>
+                <span
+                  className={`font-medium ${
+                    isMax
+                      ? isPos
+                        ? 'text-red-400 font-bold drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]'
+                        : 'text-emerald-400 font-bold'
+                      : isPos
+                      ? 'text-rose-300/80'
+                      : 'text-slate-300'
+                  }`}
+                >
                   {className}
                 </span>
-                <span className={`font-mono ${isMax ? 'text-cyan-400 font-semibold' : 'text-slate-400'}`}>
+                <span
+                  className={`font-mono ${
+                    isMax
+                      ? isPos
+                        ? 'text-red-400 font-bold'
+                        : 'text-emerald-400 font-semibold'
+                      : 'text-slate-400'
+                  }`}
+                >
                   {pct}%
                 </span>
               </div>
@@ -50,7 +70,9 @@ export default function ProbabilityBars({ probabilities = {}, predictedClass }) 
                 <div
                   className={`h-full rounded-full transition-all duration-1000 ease-out ${
                     isMax
-                      ? 'bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_12px_rgba(6,182,212,0.6)]'
+                      ? isPos
+                        ? 'bg-gradient-to-r from-red-500 to-rose-600 shadow-[0_0_12px_rgba(239,68,68,0.6)]'
+                        : 'bg-gradient-to-r from-emerald-400 to-teal-500 shadow-[0_0_12px_rgba(16,185,129,0.6)]'
                       : 'bg-slate-700/80'
                   }`}
                   style={{ width: currentWidth }}
